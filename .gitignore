@@ -1,0 +1,16 @@
+# Python
+__pycache__/
+*.py[cod]
+*.so
+*.ipynb_checkpoints/
+
+# Jupyter & Logs
+.ipynb_checkpoints/
+*.log
+
+runs/
+
+notebooks/*.pt
+
+data/*
+!data/*.zip
