@@ -12,5 +12,11 @@ Standard ANPR systems often fail when the license plate is:
 
 This project aims to **improve detection and recognition accuracy** in these conditions.
 
+## dataset
+
+
+    IndianNumberPlate-dataset have
+    Train=1413 | Val=405 | Test=203 images
+
 
 
