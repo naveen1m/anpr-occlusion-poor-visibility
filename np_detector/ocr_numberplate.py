@@ -33,8 +33,6 @@ def easy_ocr(ocr_image):
     results = reader.readtext(ocr_image, detail=1, paragraph=False)
     return results
 
-detected_number=""
-
 # format detected text to indian number plate
 
 def interpret_indian_number_plate(detected_text_list):
@@ -107,13 +105,12 @@ def extract_text(image):
         cv2.putText(ocr_image, prob_text, prob_position, cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 0, 0), 2)  # Blue
 
     # Show result
-    showImage(ocr_image)
+    # showImage(ocr_image)
 
 
     # Print extracted text
     extracted_text = [text for (_, text, _) in results]
     print("\nDetected Text:", extracted_text)
-    global detected_number
     detected_number = interpret_indian_number_plate(extracted_text)
 
     # Create a DataFrame for the table
@@ -122,14 +119,15 @@ def extract_text(image):
     # Display table
     # print("\nOCR Results Table:")
     # print(tabulate(df, headers="keys", tablefmt="fancy_grid", showindex=False))
+    
+    return extracted_text,detected_number
 
 
 def apply_ocr(ocr_image):
-  extract_text(ocr_image)
+  return extract_text(ocr_image)
 
 # image preprocessing function
 
-# convert to grayscale (B&W)
 def toGray(image):
   image_g = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
   return image_g
@@ -167,16 +165,6 @@ def apply_adaptive_threshold(image):
     image_th = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2) # handles uneven lighting
     return image_th
 
-# Define morphological function
-def apply_morphology(image, kernel_size=(3, 3), operation='dilate'):
-    # either expanding (dilate) or shrinking (erode) white regions
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
-    if operation == 'dilate':
-        return cv2.dilate(image, kernel, iterations=1)
-    elif operation == 'erode':
-        return cv2.erode(image, kernel, iterations=1)
-    return image
-
 # Enlarges images to improve text visibility
 def upscale_with_interpolation(image, scale=2, method='cubic'):
     interpolation_methods = {
@@ -189,7 +177,16 @@ def upscale_with_interpolation(image, scale=2, method='cubic'):
     resized_image = cv2.resize(image, (w * scale, h * scale), interpolation=interpolation_methods.get(method, cv2.INTER_CUBIC))
     return resized_image
 
-"""### load image and preprocess for ocr"""
+# Define morphological function
+def apply_morphology(image, kernel_size=(3, 3), operation='dilate'):
+    # either expanding (dilate) or shrinking (erode) white regions
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
+    if operation == 'dilate':
+        return cv2.dilate(image, kernel, iterations=1)
+    elif operation == 'erode':
+        return cv2.erode(image, kernel, iterations=1)
+    return image
+
 
 def showImage(img):
     image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -205,7 +202,7 @@ def crop_image_with_bbox(image, bbox):
     return cropped
 
 
-"""### find visibility of detected text"""
+# find visibility of detected text
 
 def find_probability(plate_text):
   cleaned_text = plate_text.replace(" ", "")
@@ -213,3 +210,80 @@ def find_probability(plate_text):
   print(no_of_chars)
   print("visibility : ", (no_of_chars/10)*100 , "%")
   return no_of_chars/10
+
+
+# return number plate in indian number plate forma and use '*' as filler - return np_dict
+def indian_number_plate_format(detected_text_list):
+    """
+    Format Indian number plate with expected pattern:
+    2 letters + 2 digits + 2 letters + 4 digits.
+    Output: dict with index 0-9 as keys and plate characters (or '*') as values.
+    """
+
+    # Step 1: Clean input
+    chars = []
+    for part in detected_text_list:
+        cleaned = re.sub(r'[^A-Za-z0-9]', '', part).upper()
+        cleaned = re.sub(r'IND', '', cleaned, flags=re.IGNORECASE)
+        chars.extend(list(cleaned))
+
+    pattern = ['letter', 'letter', 'digit', 'digit', 'letter', 'letter', 'digit', 'digit', 'digit', 'digit']
+
+    plate_dict = {}  # final map: {0: 'D', 1: 'L', ..., 9: '4'}
+    i = 0  # pointer to input chars
+
+    for idx, expected in enumerate(pattern):
+        while i < len(chars):
+            c = chars[i]
+            if (expected == 'letter' and c.isalpha()) or (expected == 'digit' and c.isdigit()):
+                plate_dict[idx] = c
+                i += 1
+                break
+            else:
+                plate_dict[idx] = '*'
+                break  # try same input char for next expected
+        else:
+            plate_dict[idx] = '*'  # if input chars are exhausted
+
+    # print("Plate as dict:", plate_dict)
+    return plate_dict
+
+
+# match and predict number-plate char in correct order from two occluded image extracted text
+"""
+np_dict1 : {0: 'H', 1: 'R', 2: '2', 3: '6', 4: '*', 5: '*', 6: '6', 7: '9', 8: '8', 9: '6'}
+np_dict2 : {0: 'H', 1: 'R', 2: '2', 3: '6', 4: 'T', 5: 'C', 6: '6', 7: '*', 8: '*', 9: '*'}
+"""
+def predict_np(np_dict1, np_dict2):
+    # Define NP structure: index ranges per section
+    sections = {
+        'state': [0, 1],
+        'rto': [2, 3],
+        'series': [4, 5],
+        'number': [6, 7, 8, 9]
+    }
+
+    final_np = {}
+
+    for section, indices in sections.items():
+        # Extract characters for this section
+        chars1 = [np_dict1[i] for i in indices]
+        chars2 = [np_dict2[i] for i in indices]
+
+        # Count valid (non-*) entries
+        valid1 = sum(c != '*' for c in chars1)
+        valid2 = sum(c != '*' for c in chars2)
+
+        # Choose better section
+        chosen = chars1 if valid1 >= valid2 else chars2
+
+        # Fill final dict with chosen section values
+        for i, idx in enumerate(indices):
+            final_np[idx] = chosen[i]
+
+    # Join to get final plate
+    final_plate = ''.join(final_np[i] for i in range(10))
+    print("Predicted Plate:", final_plate)
+    return final_plate
+
+    
