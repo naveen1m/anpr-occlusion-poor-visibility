@@ -1,0 +1,9 @@
+opencv-python-headless
+numpy
+easyocr
+matplotlib
+pandas
+tabulate
+ultralytics
+# torch
+requests
