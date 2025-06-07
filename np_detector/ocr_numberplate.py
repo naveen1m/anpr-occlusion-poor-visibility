@@ -1,69 +1,30 @@
-"""
-OCR the number plate detected by the YOLO model
-"""
+""" OCR the number plate detected by the YOLO model """
 
 # %pip install -q opencv-python-headless numpy easyocr tabulate
 
 import cv2
 import numpy as np
 import easyocr
-import matplotlib.pyplot as plt
-import pandas as pd
-from tabulate import tabulate
 import re
 
 
-# my current image status (brightness, sharpness, )
-# brightness
-def check_img_status(chk_image):
+""" display image """
 
-  brightness = np.mean(chk_image) # normal : 80-170
-  print(f"Image Brightness: {brightness:.2f}")
+def showImage(img):
+    image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+    cv2.imshow("detected Image", image_rgb)
+    cv2.waitKey(0)    # Wait for key press to close window
+    cv2.destroyAllWindows()
 
-  sharpness = cv2.Laplacian(chk_image, cv2.CV_64F).var() # higher is better
-  print(f"Image Sharpness: {sharpness:.2f}")
-
-  noise_level = np.std(chk_image) # less is better
-  print(f"Background Noise Level: {noise_level:.2f}")
+""" Extract text using easyocr """
 
 # easyocr
-
 def easy_ocr(ocr_image):
     reader = easyocr.Reader(['en'])
     results = reader.readtext(ocr_image, detail=1, paragraph=False)
     return results
 
-# format detected text to indian number plate
-
-def interpret_indian_number_plate(detected_text_list):
-    """
-    Indian number plate format : [StateCode][RTOCode][Series][Number]
-    """
-
-    raw = ''.join(detected_text_list)
-    cleaned = re.sub(r'[^A-Za-z0-9]', '', raw).upper()  # Remove hyphens, spaces, symbols
-
-    # Remove 'IND' if present anywhere
-    cleaned = re.sub(r'ind', '', cleaned, flags=re.IGNORECASE)
-
-    # Match pattern: 1-2 letters (state) + 1-2 digits (RTO) + 1-3 letters (series) + 1-4 digits (number)
-    pattern = re.compile(r'^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$')
-    match = pattern.match(cleaned)
-
-    if match:
-        # Extract and return without padding
-        state = match.group(1)
-        rto = match.group(2)
-        series = match.group(3)
-        number = match.group(4)
-        print(f"{state} {rto}{series} {number}")
-        return f"{state} {rto}{series} {number}"
-
-    # If pattern doesn't match, return empty
-    print("does not match indian numberplate format")
-    return cleaned
-
-# Process OCR results: draw bounding boxes, display text & probability, and print a table.
+# Process OCR results: draw bounding boxes, display text & probability
 def extract_text(image):
     table_data = []
     ocr_image = image.copy()
@@ -112,98 +73,45 @@ def extract_text(image):
     extracted_text = [text for (_, text, _) in results]
     print("\nDetected Text:", extracted_text)
     detected_number = interpret_indian_number_plate(extracted_text)
-
-    # Create a DataFrame for the table
-    # df = pd.DataFrame(table_data, columns=["Region", "Detected Text", "conf score"])
-
-    # Display table
-    # print("\nOCR Results Table:")
-    # print(tabulate(df, headers="keys", tablefmt="fancy_grid", showindex=False))
-    
     return extracted_text,detected_number
 
 
 def apply_ocr(ocr_image):
   return extract_text(ocr_image)
 
-# image preprocessing function
 
-def toGray(image):
-  image_g = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-  return image_g
+""" Utility functions for interpreting extracted Indian number plate text """
 
-# Noise Removal Filters
-def apply_gaussian_blur(image):
-    blurred = cv2.GaussianBlur(image, (5, 5), 0) # smoothens the image, reduce random noise
-    return blurred
+# format detected text to indian number plate
+def interpret_indian_number_plate(detected_text_list):
+    """
+    Indian number plate format : [StateCode][RTOCode][Series][Number]
+    """
 
-def apply_median_blur(image):
-    blurred = cv2.medianBlur(image, 5) # replacing each pixel with the median of neighbors
-    return blurred
+    raw = ''.join(detected_text_list)
+    cleaned = re.sub(r'[^A-Za-z0-9]', '', raw).upper()  # Remove hyphens, spaces, symbols
 
-def apply_bilateral_filter(image):
-    filtered = cv2.bilateralFilter(image, d=9, sigmaColor=75, sigmaSpace=75) # Reduces noise while preserving edges
-    return filtered
+    # Remove 'IND' if present anywhere
+    cleaned = re.sub(r'ind', '', cleaned, flags=re.IGNORECASE)
 
-def apply_fast_nl_means_denoising(image):
-    image_denoised = cv2.fastNlMeansDenoising(image, h=30) # Removes noise while maintaining structural details
-    return image_denoised
+    # Match pattern: 1-2 letters (state) + 1-2 digits (RTO) + 1-3 letters (series) + 1-4 digits (number)
+    pattern = re.compile(r'^([A-Z]{2})(\d{1,2})([A-Z]{1,3})(\d{1,4})$')
+    match = pattern.match(cleaned)
 
-# contrast enhancement
-def apply_clahe(image):
-  """Applies CLAHE (Contrast Limited Adaptive Histogram Equalization) to a grayscale image."""
-  clahe = cv2.createCLAHE(clipLimit=2.0, tileGridSize=(8,8))
-  image_clahe = clahe.apply(image)
-  return image_clahe
+    if match:
+        # Extract and return without padding
+        state = match.group(1)
+        rto = match.group(2)
+        series = match.group(3)
+        number = match.group(4)
+        print(f"{state} {rto}{series} {number}")
+        return f"{state} {rto}{series} {number}"
 
-# Applies thresholding
-def apply_threshold(image):
-    _, image_th = cv2.threshold(image, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU) # Converts the grayscale image to black & white
-    return image_th
-
-def apply_adaptive_threshold(image):
-    image_th = cv2.adaptiveThreshold(image, 255, cv2.ADAPTIVE_THRESH_GAUSSIAN_C, cv2.THRESH_BINARY, 11, 2) # handles uneven lighting
-    return image_th
-
-# Enlarges images to improve text visibility
-def upscale_with_interpolation(image, scale=2, method='cubic'):
-    interpolation_methods = {
-        'nearest': cv2.INTER_NEAREST,
-        'linear': cv2.INTER_LINEAR,
-        'cubic': cv2.INTER_CUBIC,
-        'lanczos': cv2.INTER_LANCZOS4
-    }
-    h, w = image.shape[:2]
-    resized_image = cv2.resize(image, (w * scale, h * scale), interpolation=interpolation_methods.get(method, cv2.INTER_CUBIC))
-    return resized_image
-
-# Define morphological function
-def apply_morphology(image, kernel_size=(3, 3), operation='dilate'):
-    # either expanding (dilate) or shrinking (erode) white regions
-    kernel = cv2.getStructuringElement(cv2.MORPH_RECT, kernel_size)
-    if operation == 'dilate':
-        return cv2.dilate(image, kernel, iterations=1)
-    elif operation == 'erode':
-        return cv2.erode(image, kernel, iterations=1)
-    return image
-
-
-def showImage(img):
-    image_rgb = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    cv2.imshow("detected Image", image_rgb)
-    cv2.waitKey(0)    # Wait for key press to close window
-    cv2.destroyAllWindows()
-
-# crop image as per bbox
-
-def crop_image_with_bbox(image, bbox):
-    x_min, y_min, x_max, y_max = map(int, bbox)  # Convert to integers
-    cropped = image[y_min:y_max, x_min:x_max]
-    return cropped
-
+    # If pattern doesn't match, return empty
+    print("does not match indian numberplate format")
+    return cleaned
 
 # find visibility of detected text
-
 def find_probability(plate_text):
   cleaned_text = plate_text.replace(" ", "")
   no_of_chars = cleaned_text.__len__()
@@ -211,8 +119,7 @@ def find_probability(plate_text):
   print("visibility : ", (no_of_chars/10)*100 , "%")
   return no_of_chars/10
 
-
-# return number plate in indian number plate forma and use '*' as filler - return np_dict
+# return number plate in indian number plate format and use '*' as filler - return np_dict
 def indian_number_plate_format(detected_text_list):
     """
     Format Indian number plate with expected pattern:
@@ -247,7 +154,6 @@ def indian_number_plate_format(detected_text_list):
 
     # print("Plate as dict:", plate_dict)
     return plate_dict
-
 
 # match and predict number-plate char in correct order from two occluded image extracted text
 """
