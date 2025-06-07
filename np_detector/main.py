@@ -1,11 +1,9 @@
 
 import cv2
-from anpr import detect_number_plate, trained_model, test_code
-from ocr_numberplate import (
-    crop_image_with_bbox, toGray, showImage, upscale_with_interpolation,
-    apply_fast_nl_means_denoising, apply_clahe, apply_threshold,
-    apply_morphology, apply_ocr, find_probability, indian_number_plate_format, interpret_indian_number_plate, predict_np
-)
+from anpr import detect_number_plate, test_code
+from ocr_numberplate import ( apply_ocr, indian_number_plate_format, predict_np)
+from image_preprocessing import (crop_image_with_bbox, toGray, upscale_with_interpolation, apply_fast_nl_means_denoising, apply_clahe, apply_threshold, apply_morphology)
+
 
 def main():
     test_image_path1 = "../data/blur-test-images/blur-car12.jpeg"
