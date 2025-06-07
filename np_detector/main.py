@@ -6,8 +6,8 @@ from image_preprocessing import (crop_image_with_bbox, toGray, upscale_with_inte
 
 
 def main():
-    test_image_path1 = "../data/blur-test-images/blur-car12.jpeg"
-    test_image_path2 = "../data/blur-test-images/blur-car12A.jpeg"
+    test_image_path1 = "../data/blur-test-images/blur-car6.jpeg"
+    test_image_path2 = "../data/blur-test-images/blur-car6A.jpeg"
     # result = detect_number_plate(test_image_path)
     # print("YOLO Detections: ", result)
 

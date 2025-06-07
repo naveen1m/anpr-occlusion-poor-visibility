@@ -115,9 +115,9 @@ def interpret_indian_number_plate(detected_text_list):
 def find_probability(plate_text):
   cleaned_text = plate_text.replace(" ", "")
   no_of_chars = cleaned_text.__len__()
-  print(no_of_chars)
-  print("visibility : ", (no_of_chars/10)*100 , "%")
-  return no_of_chars/10
+#   print(no_of_chars)
+#   print("visibility : ", (no_of_chars/10)*100 , "%")
+  return (no_of_chars/10)*100
 
 # return number plate in indian number plate format and use '*' as filler - return np_dict
 def indian_number_plate_format(detected_text_list):

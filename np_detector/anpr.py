@@ -25,8 +25,8 @@ except Exception as e:
 
 def detect_number_plate(image_path):
     results = trained_model.predict(image_path,conf=0.6)  # Returns a list
-    for result in results:  # Loop through results (usually one item in the list)
-        result.show()  # Show the detected image
+    # for result in results:  # Loop through results (usually one item in the list)
+    #     result.show()  # Show the detected image
         # Extract detailed predictions
     detections = []
     for box in results[0].boxes:
