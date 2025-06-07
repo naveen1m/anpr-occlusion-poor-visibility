@@ -3,19 +3,19 @@
 # %pip install ultralytics
 
 from ultralytics import YOLO
-import cv2
-import torch
-import requests
 import numpy as np
 
 # Constants
 SAVED_MODEL = "../models/my_yolo11n_model(new).pt"
-CONFIDENCE_THRESHOLD = 0.6
 
 # dataset_directory_path = "../data/IndianNumberPlate-dataset"
 
 def test_code():
     print("test code here")
+
+""" Detect numberplate bounding box using yolo11n trained model """
+
+
 # load saved model
 try:
     trained_model = YOLO(SAVED_MODEL)
@@ -42,6 +42,4 @@ def detect_number_plate(image_path):
         })
 
     return detections
-
-
 
