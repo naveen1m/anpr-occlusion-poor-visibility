@@ -4,7 +4,7 @@ Automatic Number Plate Recognition (ANPR) systems face significant challenges un
 
 ---
 
-## 🔍 Problem Statement
+## Problem Statement
 
 Standard ANPR systems often fail when the license plate is:
 - **Partially occluded** (by objects, dirt, or other vehicles)
@@ -12,11 +12,23 @@ Standard ANPR systems often fail when the license plate is:
 
 This project aims to **improve detection and recognition accuracy** in these conditions.
 
-## dataset
+## Dataset
 
 
     IndianNumberPlate-dataset have
     Train=1413 | Val=405 | Test=203 images
+<!-- 
+# blur-test-image valid
+6, 8, 10(partially correct, wrong order) -->
 
-
-
+# How to run 
+ 1. run fastapi: 
+    ```
+    cd np_detector
+    uvicorn fastAPI:app --reload
+    ```
+ 2. run frontend:
+    ```
+    cd anpr_frontend
+    npm run dev
+    ```
