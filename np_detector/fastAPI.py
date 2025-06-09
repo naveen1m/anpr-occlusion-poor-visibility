@@ -64,7 +64,13 @@ def extract_text(image):
 @app.post("/predict_number_plate")
 def predict_number_plate_base64(request: PredictRequest):                                               
     if len(request.images) != 2:
-        raise HTTPException(status_code=400, detail="Exactly two images must be provided")
+        img1 = base64_to_cv2_img(request.images[0].image_base64)
+        extracted_text1, detected_number1, format_np1, visibility1 = extract_text(img1)
+        return {
+            "extracted_text1": extracted_text1,
+            "detected_number1":detected_number1,
+            "visibility1":visibility1
+        }
 
     # Decode images from base64
     img1 = base64_to_cv2_img(request.images[0].image_base64)
